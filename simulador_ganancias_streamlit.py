@@ -1,4 +1,13 @@
 # Archivo: simulador_ganancias.py
+import subprocess
+import sys
+
+# Instalar plotly si no está
+try:
+    import plotly
+except ImportError:
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "plotly>=5.15.0"])
+
 import streamlit as st
 import pandas as pd
 import plotly.express as px
