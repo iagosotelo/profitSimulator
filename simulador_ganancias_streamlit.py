@@ -4,6 +4,8 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 
+# Configuración de la página
+
 st.set\_page\_config(page\_title="Simulador de ganancias App", layout="wide")
 st.title("Simulador de ganancias con 3 niveles de referidos")
 
@@ -35,9 +37,9 @@ nivelB\_saldo = st.number\_input("Saldo referido Nivel B (€):", value=100.0)
 nivelC\_saldo = st.number\_input("Saldo referido Nivel C (€):", value=50.0)
 
 referidos = \[
-{"saldo": nivelA\_saldo, "nivel":"A", "comision":0.19, "sub\_referidos":\[
-{"saldo": nivelB\_saldo, "nivel":"B", "comision":0.07, "sub\_referidos":\[
-{"saldo": nivelC\_saldo, "nivel":"C", "comision":0.03, "sub\_referidos":\[]}
+{"saldo": nivelA\_saldo, "nivel": "A", "comision": 0.19, "sub\_referidos": \[
+{"saldo": nivelB\_saldo, "nivel": "B", "comision": 0.07, "sub\_referidos": \[
+{"saldo": nivelC\_saldo, "nivel": "C", "comision": 0.03, "sub\_referidos": \[]}
 ]}
 ]}
 ]
@@ -88,10 +90,10 @@ ganancia\_dia\_total += ganancia\_usuario
 
 registro = {
     "día": dia,
-    "saldo_usuario": round(saldo_usuario,2),
-    "ganancia_usuario_dia": round(ganancia_dia_total,2),
-    "comision_acumulada": round(comision_acumulada,2),
-    "saldos_referidos": [round(r["saldo"],2) for r in referidos]
+    "saldo_usuario": round(saldo_usuario, 2),
+    "ganancia_usuario_dia": round(ganancia_dia_total, 2),
+    "comision_acumulada": round(comision_acumulada, 2),
+    "saldos_referidos": [round(r["saldo"], 2) for r in referidos]
 }
 registros.append(registro)
 ```
@@ -99,9 +101,9 @@ registros.append(registro)
 df = pd.DataFrame(registros)
 df\["mes"] = df\["día"] // 30 + 1
 resumen\_mensual = df.groupby("mes").agg({
-"saldo\_usuario":"last",
-"ganancia\_usuario\_dia":"sum",
-"comision\_acumulada":"last"
+"saldo\_usuario": "last",
+"ganancia\_usuario\_dia": "sum",
+"comision\_acumulada": "last"
 }).reset\_index()
 
 # -------------------------------
@@ -139,7 +141,7 @@ mime="text/csv"
 # -------------------------------
 
 st.subheader("Gráficos de evolución")
-fig = px.line(df, x="día", y="saldo\_usuario", title="Saldo Usuario", labels={"día":"Día", "saldo\_usuario":"Saldo (€)"})
+fig = px.line(df, x="día", y="saldo\_usuario", title="Saldo Usuario", labels={"día": "Día", "saldo\_usuario": "Saldo (€)"})
 fig.add\_scatter(x=df\["día"], y=df\["comision\_acumulada"], mode='lines', name='Comisiones acumuladas')
 for i, r in enumerate(referidos):
 fig.add\_scatter(x=df\["día"], y=\[s\[i] for s in df\["saldos\_referidos"]], mode='lines', name=f"Saldo referido nivel {r\['nivel']}")
