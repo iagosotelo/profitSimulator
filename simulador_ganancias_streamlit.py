@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 
 st.set_page_config(page_title="Simulador de Ganancias USDT", layout="wide")
-st.title("💰 Simulador de Ganancias Diarias con Referidos y Retiradas Periódicas (USDT)")
+st.title("💰 Simulador de Ganancias Diarias con Referidos y Retiradas (USDT)")
 
 # ==========================
 # Saldo inicial
@@ -20,19 +20,18 @@ except:
     st.warning("Introduce un número válido para el saldo inicial")
 
 # ==========================
-# Configuración de retiradas periódicas
+# Configuración de retiradas
 # ==========================
 st.subheader("Configuración de retiradas periódicas")
 
 saldo_limite_input = st.text_input(
-    "Saldo límite para operar (USDT)",
+    "Saldo límite para operar (USDT, solo referencia)",
     value="500"
 )
 try:
     saldo_limite = float(saldo_limite_input.replace(',', '.'))
 except:
     saldo_limite = 500.0
-    st.warning("Introduce un número válido para saldo límite")
 
 saldo_retiro_input = st.text_input(
     "Saldo a partir del cual se realiza la retirada (USDT)",
@@ -42,7 +41,6 @@ try:
     saldo_retiro = float(saldo_retiro_input.replace(',', '.'))
 except:
     saldo_retiro = 0.0
-    st.warning("Introduce un número válido para saldo de retirada")
 
 importe_retiro_input = st.text_input(
     "Importe a retirar cuando se alcanza el saldo de retirada (USDT)",
@@ -52,13 +50,12 @@ try:
     importe_retiro = float(importe_retiro_input.replace(',', '.'))
 except:
     importe_retiro = 0.0
-    st.warning("Introduce un número válido para importe de retiro")
 
 # ==========================
-# Número de cuantificaciones y % beneficio diario
+# Cuantificaciones y beneficio diario
 # ==========================
 num_cuantificaciones = st.number_input(
-    "Número de cuantificaciones diarias (solo referencia)",
+    "Número de cuantificaciones diarias",
     min_value=1,
     value=4,
     step=1
@@ -117,28 +114,33 @@ if st.button("▶️ Calcular ganancias"):
     dias = 90
     registros_diarios = []
     for dia in range(1, dias+1):
-        ganancia_usuario = saldo * porcentaje_beneficio_diario / 100
-        ganancia_referidos = sum(
-            ganancia_usuario * (comisiones[nivel]/100) * st.session_state["num_referidos"][nivel]
-            for nivel in ["A","B","C"]
-        )
-        ganancia_total = ganancia_usuario + ganancia_referidos
+        saldo_dia = saldo
+        ganancia_usuario_total = 0
+        ganancia_referidos_total = 0
         
-        # Aplicar retiradas periódicas si se alcanza saldo de retirada
-        saldo_total = saldo + ganancia_total
-        if saldo_total >= saldo_retiro:
-            saldo_total -= importe_retiro
-            if saldo_total > saldo_limite:
-                saldo_total = saldo_limite
+        # Operar por cuantificaciones
+        for _ in range(num_cuantificaciones):
+            ganancia_usuario = saldo_dia * (porcentaje_beneficio_diario / 100) / num_cuantificaciones
+            ganancia_referidos = sum(
+                ganancia_usuario * (comisiones[nivel]/100) * st.session_state["num_referidos"][nivel]
+                for nivel in ["A","B","C"]
+            )
+            saldo_dia += ganancia_usuario + ganancia_referidos
+            ganancia_usuario_total += ganancia_usuario
+            ganancia_referidos_total += ganancia_referidos
+        
+        # Retirada al final del día si se alcanza saldo_retiro
+        if saldo_dia >= saldo_retiro:
+            saldo_dia -= importe_retiro
         
         registros_diarios.append({
             "Día": dia,
-            "Ganancia usuario (USDT)": round(ganancia_usuario,2),
-            "Ganancia por referidos (USDT)": round(ganancia_referidos,2),
-            "Ganancia total (USDT)": round(ganancia_total,2)
+            "Ganancia usuario (USDT)": round(ganancia_usuario_total,2),
+            "Ganancia por referidos (USDT)": round(ganancia_referidos_total,2),
+            "Ganancia total (USDT)": round(ganancia_usuario_total + ganancia_referidos_total,2)
         })
         
-        saldo = saldo_total  # actualizar saldo para siguiente día
+        saldo = saldo_dia  # saldo del siguiente día
     
     df_diario = pd.DataFrame(registros_diarios)
     st.subheader("Tabla diaria (90 días)")
@@ -151,27 +153,38 @@ if st.button("▶️ Calcular ganancias"):
     meses = 12
     registros_mensuales = []
     for mes in range(1, meses+1):
-        ganancia_usuario = saldo * porcentaje_beneficio_diario / 100 * 30  # aproximar mes a 30 días
-        ganancia_referidos = sum(
-            ganancia_usuario * (comisiones[nivel]/100) * st.session_state["num_referidos"][nivel]
-            for nivel in ["A","B","C"]
-        )
-        ganancia_total = ganancia_usuario + ganancia_referidos
-        
-        saldo_total = saldo + ganancia_total
-        if saldo_total >= saldo_retiro:
-            saldo_total -= importe_retiro
-            if saldo_total > saldo_limite:
-                saldo_total = saldo_limite
+        saldo_mes = saldo
+        ganancia_usuario_total = 0
+        ganancia_referidos_total = 0
+        # Aproximar mes a 30 días, operando cada día con cuantificaciones
+        for _ in range(30):
+            saldo_dia = saldo_mes
+            ganancia_usuario_dia = 0
+            ganancia_referidos_dia = 0
+            for _ in range(num_cuantificaciones):
+                g_usuario = saldo_dia * (porcentaje_beneficio_diario / 100) / num_cuantificaciones
+                g_referidos = sum(
+                    g_usuario * (comisiones[nivel]/100) * st.session_state["num_referidos"][nivel]
+                    for nivel in ["A","B","C"]
+                )
+                saldo_dia += g_usuario + g_referidos
+                ganancia_usuario_dia += g_usuario
+                ganancia_referidos_dia += g_referidos
+            # Retirada al final del día
+            if saldo_dia >= saldo_retiro:
+                saldo_dia -= importe_retiro
+            saldo_mes = saldo_dia
+            ganancia_usuario_total += ganancia_usuario_dia
+            ganancia_referidos_total += ganancia_referidos_dia
         
         registros_mensuales.append({
             "Mes": mes,
-            "Ganancia usuario (USDT)": round(ganancia_usuario,2),
-            "Ganancia por referidos (USDT)": round(ganancia_referidos,2),
-            "Ganancia total (USDT)": round(ganancia_total,2)
+            "Ganancia usuario (USDT)": round(ganancia_usuario_total,2),
+            "Ganancia por referidos (USDT)": round(ganancia_referidos_total,2),
+            "Ganancia total (USDT)": round(ganancia_usuario_total + ganancia_referidos_total,2)
         })
         
-        saldo = saldo_total
+        saldo = saldo_mes
     
     df_mensual = pd.DataFrame(registros_mensuales)
     st.subheader("Tabla mensual (12 meses)")
