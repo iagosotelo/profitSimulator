@@ -1,8 +1,8 @@
 import streamlit as st
 import pandas as pd
 
-st.set_page_config(page_title="Simulador de Ganancias App", layout="wide")
-st.title("💰 Simulador de Ganancias con Referidos y Retiro Único")
+st.set_page_config(page_title="Simulador de Ganancias USDT", layout="wide")
+st.title("💰 Simulador de Ganancias con Referidos y Retiradas Periódicas (USDT)")
 
 # ==========================
 # Saldo inicial
@@ -11,7 +11,7 @@ if "saldo_inicial" not in st.session_state:
     st.session_state["saldo_inicial"] = 0.0
 
 saldo_input = st.text_input(
-    "Saldo inicial del usuario (€)",
+    "Saldo inicial del usuario (USDT)",
     value=str(st.session_state["saldo_inicial"])
 )
 try:
@@ -20,29 +20,29 @@ except:
     st.warning("Introduce un número válido para el saldo inicial")
 
 # ==========================
-# Configuración de retiro
+# Configuración de retiradas periódicas
 # ==========================
-st.subheader("Retiro único")
+st.subheader("Configuración de retiradas periódicas")
 
-retiro_disparo_input = st.text_input(
-    "Saldo a partir del cual se realiza la retirada (€)",
-    value="0"
+saldo_limite_input = st.text_input(
+    "Saldo límite para operar (USDT)",
+    value="500"
 )
 try:
-    retiro_disparo = float(retiro_disparo_input.replace(',', '.'))
+    saldo_limite = float(saldo_limite_input.replace(',', '.'))
 except:
-    retiro_disparo = 0.0
-    st.warning("Introduce un número válido para saldo disparo")
+    saldo_limite = 500.0
+    st.warning("Introduce un número válido para saldo límite")
 
 importe_retiro_input = st.text_input(
-    "Importe a retirar (€)",
+    "Importe a retirar cuando se alcance el saldo límite (USDT)",
     value="0"
 )
 try:
     importe_retiro = float(importe_retiro_input.replace(',', '.'))
 except:
     importe_retiro = 0.0
-    st.warning("Introduce un número válido para importe a retirar")
+    st.warning("Introduce un número válido para importe de retiro")
 
 # ==========================
 # Número de cuantificaciones
@@ -58,41 +58,31 @@ num_cuantificaciones = st.number_input(
 # Referidos simplificados
 # ==========================
 st.subheader("Número de referidos por nivel")
-
 if "num_referidos" not in st.session_state:
     st.session_state["num_referidos"] = {"A":0, "B":0, "C":0}
 
 colA, colB, colC = st.columns(3)
 with colA:
-    try:
-        st.session_state["num_referidos"]["A"] = int(st.number_input(
-            "Nivel A (19%)",
-            min_value=0,
-            value=st.session_state["num_referidos"]["A"],
-            step=1
-        ))
-    except:
-        st.session_state["num_referidos"]["A"] = 0
+    st.session_state["num_referidos"]["A"] = st.number_input(
+        "Nivel A (19%)",
+        min_value=0,
+        value=st.session_state["num_referidos"]["A"],
+        step=1
+    )
 with colB:
-    try:
-        st.session_state["num_referidos"]["B"] = int(st.number_input(
-            "Nivel B (7%)",
-            min_value=0,
-            value=st.session_state["num_referidos"]["B"],
-            step=1
-        ))
-    except:
-        st.session_state["num_referidos"]["B"] = 0
+    st.session_state["num_referidos"]["B"] = st.number_input(
+        "Nivel B (7%)",
+        min_value=0,
+        value=st.session_state["num_referidos"]["B"],
+        step=1
+    )
 with colC:
-    try:
-        st.session_state["num_referidos"]["C"] = int(st.number_input(
-            "Nivel C (3%)",
-            min_value=0,
-            value=st.session_state["num_referidos"]["C"],
-            step=1
-        ))
-    except:
-        st.session_state["num_referidos"]["C"] = 0
+    st.session_state["num_referidos"]["C"] = st.number_input(
+        "Nivel C (3%)",
+        min_value=0,
+        value=st.session_state["num_referidos"]["C"],
+        step=1
+    )
 
 comisiones = {"A": 19, "B": 7, "C": 3}
 
@@ -114,16 +104,16 @@ if st.button("▶️ Calcular ganancias"):
         ganancia_referidos = sum(ganancia_usuario * (comisiones[nivel]/100) * st.session_state["num_referidos"][nivel] for nivel in ["A","B","C"])
         ganancia_total = ganancia_usuario + ganancia_referidos
         
-        # Aplicar retiro único
+        # Aplicar retiradas periódicas si se alcanza el saldo límite
         saldo_total = saldo + ganancia_total
-        if saldo_total >= retiro_disparo:
+        if saldo_total >= saldo_limite:
             saldo_total -= importe_retiro
         
         registros_diarios.append({
             "Día": dia,
-            "Ganancia usuario (€)": round(ganancia_usuario,2),
-            "Ganancia por referidos (€)": round(ganancia_referidos,2),
-            "Ganancia total (€)": round(ganancia_total,2)
+            "Ganancia usuario (USDT)": round(ganancia_usuario,2),
+            "Ganancia por referidos (USDT)": round(ganancia_referidos,2),
+            "Ganancia total (USDT)": round(ganancia_total,2)
         })
         
         saldo = saldo_total  # actualizar saldo para siguiente día
@@ -139,20 +129,19 @@ if st.button("▶️ Calcular ganancias"):
     meses = 12
     registros_mensuales = []
     for mes in range(1, meses+1):
-        ganancia_usuario = saldo * 0.03 * num_cuantificaciones * 30
+        ganancia_usuario = saldo * 0.03 * num_cuantificaciones * 30  # aproximar mes a 30 días
         ganancia_referidos = sum(ganancia_usuario * (comisiones[nivel]/100) * st.session_state["num_referidos"][nivel] for nivel in ["A","B","C"])
         ganancia_total = ganancia_usuario + ganancia_referidos
         
-        # Aplicar retiro único
         saldo_total = saldo + ganancia_total
-        if saldo_total >= retiro_disparo:
+        if saldo_total >= saldo_limite:
             saldo_total -= importe_retiro
         
         registros_mensuales.append({
             "Mes": mes,
-            "Ganancia usuario (€)": round(ganancia_usuario,2),
-            "Ganancia por referidos (€)": round(ganancia_referidos,2),
-            "Ganancia total (€)": round(ganancia_total,2)
+            "Ganancia usuario (USDT)": round(ganancia_usuario,2),
+            "Ganancia por referidos (USDT)": round(ganancia_referidos,2),
+            "Ganancia total (USDT)": round(ganancia_total,2)
         })
         
         saldo = saldo_total  # actualizar saldo para siguiente mes
