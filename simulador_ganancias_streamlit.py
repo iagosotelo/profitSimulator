@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 
 st.set_page_config(page_title="Simulador de Ganancias USDT", layout="wide")
-st.title("💰 Simulador de Ganancias con Referidos y Retiradas Periódicas (USDT)")
+st.title("💰 Simulador de Ganancias Diarias con Referidos y Retiradas Periódicas (USDT)")
 
 # ==========================
 # Saldo inicial
@@ -55,17 +55,17 @@ except:
     st.warning("Introduce un número válido para importe de retiro")
 
 # ==========================
-# Número de cuantificaciones y % beneficio
+# Número de cuantificaciones y % beneficio diario
 # ==========================
 num_cuantificaciones = st.number_input(
-    "Número de cuantificaciones diarias",
+    "Número de cuantificaciones diarias (solo referencia)",
     min_value=1,
     value=4,
     step=1
 )
 
-porcentaje_beneficio = st.number_input(
-    "Beneficio propio por cuantificación (%)",
+porcentaje_beneficio_diario = st.number_input(
+    "Beneficio propio diario (%)",
     min_value=0.0,
     value=3.0,
     step=0.1
@@ -117,7 +117,7 @@ if st.button("▶️ Calcular ganancias"):
     dias = 90
     registros_diarios = []
     for dia in range(1, dias+1):
-        ganancia_usuario = saldo * porcentaje_beneficio / 100 * num_cuantificaciones
+        ganancia_usuario = saldo * porcentaje_beneficio_diario / 100
         ganancia_referidos = sum(
             ganancia_usuario * (comisiones[nivel]/100) * st.session_state["num_referidos"][nivel]
             for nivel in ["A","B","C"]
@@ -128,7 +128,6 @@ if st.button("▶️ Calcular ganancias"):
         saldo_total = saldo + ganancia_total
         if saldo_total >= saldo_retiro:
             saldo_total -= importe_retiro
-            # No exceder saldo límite
             if saldo_total > saldo_limite:
                 saldo_total = saldo_limite
         
@@ -152,7 +151,7 @@ if st.button("▶️ Calcular ganancias"):
     meses = 12
     registros_mensuales = []
     for mes in range(1, meses+1):
-        ganancia_usuario = saldo * porcentaje_beneficio / 100 * num_cuantificaciones * 30
+        ganancia_usuario = saldo * porcentaje_beneficio_diario / 100 * 30  # aproximar mes a 30 días
         ganancia_referidos = sum(
             ganancia_usuario * (comisiones[nivel]/100) * st.session_state["num_referidos"][nivel]
             for nivel in ["A","B","C"]
