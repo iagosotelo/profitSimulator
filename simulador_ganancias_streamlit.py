@@ -102,6 +102,9 @@ if st.button("▶️ Calcular ganancias"):
     # --------------------------
     dias = 90
     registros_diarios = []
+    # Crear copia de referidos para la simulación para no modificar la sesión real
+    referidos_sim = [r.copy() for r in st.session_state["referidos"]]
+    
     for dia in range(1, dias+1):
         saldo_dia = saldo
         ganancia_usuario_total = 0
@@ -114,14 +117,13 @@ if st.button("▶️ Calcular ganancias"):
             ganancia_usuario_total += ganancia_usuario
             
             # Ganancia por referidos calculada correctamente
-            for r in st.session_state["referidos"]:
+            for idx, r in enumerate(referidos_sim):
                 saldo_r = r['saldo']
-                ganancia_referido_dia = 0
-                for _ in range(num_cuantificaciones):
-                    g_r = saldo_r * (porcentaje_beneficio_diario / 100) / num_cuantificaciones
-                    saldo_r += g_r
-                    ganancia_referido_dia += g_r
-                ganancia_referidos_total += ganancia_referido_dia * (comisiones[r['nivel']] / 100)
+                ganancia_referido_cuanti = saldo_r * (porcentaje_beneficio_diario / 100) / num_cuantificaciones
+                saldo_r += ganancia_referido_cuanti
+                # Actualizar saldo del referido en la simulación
+                referidos_sim[idx]['saldo'] = saldo_r
+                ganancia_referidos_total += ganancia_referido_cuanti * (comisiones[r['nivel']] / 100)
         
         # Retirada al final del día si se alcanza saldo_retiro
         if saldo_dia >= saldo_retiro:
@@ -144,8 +146,10 @@ if st.button("▶️ Calcular ganancias"):
     # Tabla mensual para 12 meses
     # --------------------------
     saldo = st.session_state["saldo_inicial"]
+    referidos_sim = [r.copy() for r in st.session_state["referidos"]]
     meses = 12
     registros_mensuales = []
+    
     for mes in range(1, meses+1):
         saldo_mes = saldo
         ganancia_usuario_total = 0
@@ -160,14 +164,13 @@ if st.button("▶️ Calcular ganancias"):
                 saldo_dia += g_usuario
                 ganancia_usuario_dia += g_usuario
                 
-                for r in st.session_state["referidos"]:
+                for idx, r in enumerate(referidos_sim):
                     saldo_r = r['saldo']
-                    ganancia_referido_dia = 0
-                    for _ in range(num_cuantificaciones):
-                        g_r = saldo_r * (porcentaje_beneficio_diario / 100) / num_cuantificaciones
-                        saldo_r += g_r
-                        ganancia_referido_dia += g_r
-                    ganancia_referidos_dia += ganancia_referido_dia * (comisiones[r['nivel']] / 100)
+                    g_r = saldo_r * (porcentaje_beneficio_diario / 100) / num_cuantificaciones
+                    saldo_r += g_r
+                    referidos_sim[idx]['saldo'] = saldo_r
+                    ganancia_referidos_dia += g_r * (comisiones[r['nivel']] / 100)
+            
             # Retirada al final del día
             if saldo_dia >= saldo_retiro:
                 saldo_dia -= importe_retiro
