@@ -1,6 +1,6 @@
+# Archivo: simulador_ganancias.py
 import streamlit as st
 import pandas as pd
-import plotly.express as px
 
 st.set_page_config(page_title="Simulador de ganancias App", layout="wide")
 st.title("Simulador de ganancias con 3 niveles de referidos")
@@ -111,13 +111,3 @@ st.download_button(
     file_name="resumen_mensual.csv",
     mime="text/csv"
 )
-
-# -------------------------------
-# Gráficos
-# -------------------------------
-st.subheader("Gráficos de evolución")
-fig = px.line(df, x="día", y="saldo_usuario", title="Saldo Usuario", labels={"día": "Día", "saldo_usuario": "Saldo (€)"})
-fig.add_scatter(x=df["día"], y=df["comision_acumulada"], mode='lines', name='Comisiones acumuladas')
-for i, r in enumerate(referidos):
-    fig.add_scatter(x=df["día"], y=[s[i] for s in df["saldos_referidos"]], mode='lines', name=f"Saldo referido nivel {r['nivel']}")
-st.plotly_chart(fig, use_container_width=True)
