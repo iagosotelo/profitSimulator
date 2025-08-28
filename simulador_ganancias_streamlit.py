@@ -1,14 +1,12 @@
-# Archivo: simulador_ganancias.py
 import streamlit as st
 import pandas as pd
 import plotly.express as px
 
-# Configuración de la página
 st.set_page_config(page_title="Simulador de ganancias App", layout="wide")
 st.title("Simulador de ganancias con 3 niveles de referidos")
 
 # -------------------------------
-# Parámetros de usuario preconfigurados
+# Parámetros de usuario
 # -------------------------------
 saldo_usuario = st.number_input("Saldo inicial usuario (€):", value=287.10)
 ganancia_diaria_total = st.number_input("Ganancia diaria total (€):", value=5.10)
@@ -21,7 +19,7 @@ tasa_diaria_total = ganancia_diaria_total / saldo_usuario
 tasa_por_cuantificacion = tasa_diaria_total / cuantificaciones_diarias
 
 # -------------------------------
-# Árbol de referidos preconfigurado
+# Árbol de referidos
 # -------------------------------
 st.subheader("Referidos preconfigurados")
 nivelA_saldo = st.number_input("Saldo referido Nivel A (€):", value=185.89)
@@ -37,7 +35,7 @@ referidos = [
 ]
 
 # -------------------------------
-# Función recursiva para referidos
+# Función recursiva
 # -------------------------------
 def actualizar_referidos(ref_list, saldo_usuario, tasa_cuant):
     comision_total = 0.0
@@ -54,7 +52,7 @@ def actualizar_referidos(ref_list, saldo_usuario, tasa_cuant):
     return comision_total
 
 # -------------------------------
-# Simulación diaria
+# Simulación
 # -------------------------------
 registros = []
 comision_acumulada = 0.0
@@ -99,7 +97,7 @@ st.dataframe(df.head(30))
 st.subheader("Resumen mensual")
 st.dataframe(resumen_mensual)
 
-# Botones para exportar CSV
+# Exportar CSV
 st.download_button(
     label="Descargar datos diarios CSV",
     data=df.to_csv(index=False).encode('utf-8'),
@@ -115,7 +113,7 @@ st.download_button(
 )
 
 # -------------------------------
-# Gráficos con Plotly
+# Gráficos
 # -------------------------------
 st.subheader("Gráficos de evolución")
 fig = px.line(df, x="día", y="saldo_usuario", title="Saldo Usuario", labels={"día": "Día", "saldo_usuario": "Saldo (€)"})
