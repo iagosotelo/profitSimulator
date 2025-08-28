@@ -44,21 +44,21 @@ except:
 st.subheader("Configuración de retiradas periódicas")
 saldo_retiro_input = st.text_input(
     "Saldo a partir del cual se realiza la retirada (USDT)",
-    value="0"
+    value="500"
 )
 try:
     saldo_retiro = float(saldo_retiro_input.replace(',', '.'))
 except:
-    saldo_retiro = 0.0
+    saldo_retiro = 500.0
 
 importe_retiro_input = st.text_input(
     "Importe a retirar cuando se alcanza el saldo de retirada (USDT)",
-    value="0"
+    value="100"
 )
 try:
     importe_retiro = float(importe_retiro_input.replace(',', '.'))
 except:
-    importe_retiro = 0.0
+    importe_retiro = 100.0
 
 # ==========================
 # Gestión de referidos
@@ -102,7 +102,6 @@ if st.button("▶️ Calcular ganancias"):
     # --------------------------
     dias = 90
     registros_diarios = []
-    # Crear copia de referidos para la simulación para no modificar la sesión real
     referidos_sim = [r.copy() for r in st.session_state["referidos"]]
     
     for dia in range(1, dias+1):
@@ -116,16 +115,23 @@ if st.button("▶️ Calcular ganancias"):
             saldo_dia += ganancia_usuario
             ganancia_usuario_total += ganancia_usuario
             
-            # Ganancia por referidos calculada correctamente
+            # Ganancia por referidos
             for idx, r in enumerate(referidos_sim):
                 saldo_r = r['saldo']
                 ganancia_referido_cuanti = saldo_r * (porcentaje_beneficio_diario / 100) / num_cuantificaciones
                 saldo_r += ganancia_referido_cuanti
-                # Actualizar saldo del referido en la simulación
+                
+                # Retirada periódica para el referido
+                if saldo_r >= saldo_retiro:
+                    saldo_r -= importe_retiro
+                
+                # Actualizar saldo del referido
                 referidos_sim[idx]['saldo'] = saldo_r
+                
+                # Ganancia para el usuario
                 ganancia_referidos_total += ganancia_referido_cuanti * (comisiones[r['nivel']] / 100)
         
-        # Retirada al final del día si se alcanza saldo_retiro
+        # Retirada para el usuario
         if saldo_dia >= saldo_retiro:
             saldo_dia -= importe_retiro
         
@@ -136,7 +142,7 @@ if st.button("▶️ Calcular ganancias"):
             "Ganancia total (USDT)": round(ganancia_usuario_total + ganancia_referidos_total,2)
         })
         
-        saldo = saldo_dia  # saldo del siguiente día
+        saldo = saldo_dia
     
     df_diario = pd.DataFrame(registros_diarios)
     st.subheader("Tabla diaria (90 días)")
@@ -168,12 +174,12 @@ if st.button("▶️ Calcular ganancias"):
                     saldo_r = r['saldo']
                     g_r = saldo_r * (porcentaje_beneficio_diario / 100) / num_cuantificaciones
                     saldo_r += g_r
+                    # Retirada periódica
+                    if saldo_r >= saldo_retiro:
+                        saldo_r -= importe_retiro
                     referidos_sim[idx]['saldo'] = saldo_r
                     ganancia_referidos_dia += g_r * (comisiones[r['nivel']] / 100)
             
-            # Retirada al final del día
-            if saldo_dia >= saldo_retiro:
-                saldo_dia -= importe_retiro
             saldo_mes = saldo_dia
             ganancia_usuario_total += ganancia_usuario_dia
             ganancia_referidos_total += ganancia_referidos_dia
