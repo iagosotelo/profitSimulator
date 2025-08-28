@@ -11,7 +11,7 @@ saldo_inicial = st.number_input(
     "Saldo inicial del usuario",
     min_value=0.0,
     value=0.0,
-    step=0.01,
+    step=None,          # permite escribir cualquier valor libremente
     format="%.2f"
 )
 
