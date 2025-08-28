@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 
 st.set_page_config(page_title="Simulador de Ganancias App", layout="wide")
-st.title("💰 Simulador de Ganancias con Referidos y Retiro Único")
+st.title("💰 Simulador de Ganancias con Referidos")
 
 # ==========================
 # Saldo inicial
