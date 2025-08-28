@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 
 st.set_page_config(page_title="Simulador de Ganancias App", layout="wide")
-st.title("💰 Simulador de Ganancias con Referidos")
+st.title("💰 Simulador de Ganancias con Referidos y Retiro Único")
 
 # ==========================
 # Saldo inicial
@@ -55,68 +55,128 @@ num_cuantificaciones = st.number_input(
 )
 
 # ==========================
-# Referidos dinámicos
+# Referidos simplificados
 # ==========================
-st.subheader("Referidos")
+st.subheader("Número de referidos por nivel")
+
+if "num_referidos" not in st.session_state:
+    st.session_state["num_referidos"] = {"A":0, "B":0, "C":0}
+
+colA, colB, colC = st.columns(3)
+with colA:
+    try:
+        st.session_state["num_referidos"]["A"] = int(st.number_input(
+            "Nivel A (19%)",
+            min_value=0,
+            value=st.session_state["num_referidos"]["A"],
+            step=1
+        ))
+    except:
+        st.session_state["num_referidos"]["A"] = 0
+with colB:
+    try:
+        st.session_state["num_referidos"]["B"] = int(st.number_input(
+            "Nivel B (7%)",
+            min_value=0,
+            value=st.session_state["num_referidos"]["B"],
+            step=1
+        ))
+    except:
+        st.session_state["num_referidos"]["B"] = 0
+with colC:
+    try:
+        st.session_state["num_referidos"]["C"] = int(st.number_input(
+            "Nivel C (3%)",
+            min_value=0,
+            value=st.session_state["num_referidos"]["C"],
+            step=1
+        ))
+    except:
+        st.session_state["num_referidos"]["C"] = 0
 
 comisiones = {"A": 19, "B": 7, "C": 3}
 
-if "referidos" not in st.session_state:
-    st.session_state["referidos"] = []
-
-if st.button("➕ Añadir referido"):
-    st.session_state["referidos"].append({"nombre": "", "nivel": "A"})
-
-nuevos_referidos = []
-for i, ref in enumerate(st.session_state["referidos"]):
-    cols = st.columns([2,1,1])
-    with cols[0]:
-        nombre = st.text_input(f"Nombre referido {i+1}", value=ref["nombre"], key=f"nombre_{i}")
-    with cols[1]:
-        nivel = st.selectbox(f"Nivel {i+1}", ["A","B","C"], index=["A","B","C"].index(ref["nivel"]), key=f"nivel_{i}")
-    with cols[2]:
-        st.write(f"Comisión: {comisiones[nivel]}%")
-    nuevos_referidos.append({"nombre": nombre, "nivel": nivel})
-
-st.session_state.referidos = nuevos_referidos
-
 # ==========================
-# Simulación de ganancias
+# Simulación de ganancias diaria y mensual
 # ==========================
-st.subheader("Simulación de Beneficios Totales")
+st.subheader("Simulación de Beneficios")
 
 if st.button("▶️ Calcular ganancias"):
     saldo = st.session_state["saldo_inicial"]
     
-    # Ganancia diaria del usuario (por ejemplo, 3% diaria)
-    ganancia_usuario_total = saldo * 0.03 * num_cuantificaciones
+    # --------------------------
+    # Tabla diaria para 90 días
+    # --------------------------
+    dias = 90
+    registros_diarios = []
+    for dia in range(1, dias+1):
+        ganancia_usuario = saldo * 0.03 * num_cuantificaciones
+        ganancia_referidos = sum(ganancia_usuario * (comisiones[nivel]/100) * st.session_state["num_referidos"][nivel] for nivel in ["A","B","C"])
+        ganancia_total = ganancia_usuario + ganancia_referidos
+        
+        # Aplicar retiro único
+        saldo_total = saldo + ganancia_total
+        if saldo_total >= retiro_disparo:
+            saldo_total -= importe_retiro
+        
+        registros_diarios.append({
+            "Día": dia,
+            "Ganancia usuario (€)": round(ganancia_usuario,2),
+            "Ganancia por referidos (€)": round(ganancia_referidos,2),
+            "Ganancia total (€)": round(ganancia_total,2)
+        })
+        
+        saldo = saldo_total  # actualizar saldo para siguiente día
     
-    # Comisiones de referidos
-    ganancia_referidos_total = 0
-    for r in st.session_state["referidos"]:
-        ganancia_referidos_total += ganancia_usuario_total * (comisiones[r["nivel"]] / 100)
+    df_diario = pd.DataFrame(registros_diarios)
+    st.subheader("Tabla diaria (90 días)")
+    st.dataframe(df_diario, use_container_width=True)
     
-    saldo_total = saldo + ganancia_usuario_total + ganancia_referidos_total
+    # --------------------------
+    # Tabla mensual para 12 meses
+    # --------------------------
+    saldo = st.session_state["saldo_inicial"]
+    meses = 12
+    registros_mensuales = []
+    for mes in range(1, meses+1):
+        ganancia_usuario = saldo * 0.03 * num_cuantificaciones * 30
+        ganancia_referidos = sum(ganancia_usuario * (comisiones[nivel]/100) * st.session_state["num_referidos"][nivel] for nivel in ["A","B","C"])
+        ganancia_total = ganancia_usuario + ganancia_referidos
+        
+        # Aplicar retiro único
+        saldo_total = saldo + ganancia_total
+        if saldo_total >= retiro_disparo:
+            saldo_total -= importe_retiro
+        
+        registros_mensuales.append({
+            "Mes": mes,
+            "Ganancia usuario (€)": round(ganancia_usuario,2),
+            "Ganancia por referidos (€)": round(ganancia_referidos,2),
+            "Ganancia total (€)": round(ganancia_total,2)
+        })
+        
+        saldo = saldo_total  # actualizar saldo para siguiente mes
     
-    # Aplicar retiro si se alcanza el monto
-    if saldo_total >= retiro_disparo:
-        saldo_total -= importe_retiro
+    df_mensual = pd.DataFrame(registros_mensuales)
+    st.subheader("Tabla mensual (12 meses)")
+    st.dataframe(df_mensual, use_container_width=True)
     
-    # Crear tabla final
-    df_resultado = pd.DataFrame([{
-        "Saldo inicial (€)": round(saldo,2),
-        f"Ganancia usuario ({num_cuantificaciones} cuantificaciones) (€)": round(ganancia_usuario_total,2),
-        "Ganancia por referidos (€)": round(ganancia_referidos_total,2),
-        "Saldo final después de retiro (€)": round(saldo_total,2)
-    }])
-    
-    st.dataframe(df_resultado, use_container_width=True)
-    
+    # --------------------------
     # Descargar CSV
-    csv = df_resultado.to_csv(index=False).encode("utf-8")
+    # --------------------------
+    csv_diario = df_diario.to_csv(index=False).encode("utf-8")
+    csv_mensual = df_mensual.to_csv(index=False).encode("utf-8")
+    
     st.download_button(
-        label="📥 Descargar resultados en CSV",
-        data=csv,
-        file_name="simulacion_ganancias.csv",
+        label="📥 Descargar resultados diarios CSV",
+        data=csv_diario,
+        file_name="simulacion_diaria.csv",
+        mime="text/csv"
+    )
+    
+    st.download_button(
+        label="📥 Descargar resultados mensuales CSV",
+        data=csv_mensual,
+        file_name="simulacion_mensual.csv",
         mime="text/csv"
     )
