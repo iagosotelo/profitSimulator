@@ -2,10 +2,10 @@ import streamlit as st
 import pandas as pd
 
 st.set_page_config(page_title="Simulador de Ganancias USDT", layout="wide")
-st.title("💰 Simulador de Ganancias Diarias con Referidos y Retiradas (USDT)")
+st.title("💰 Simulador de Ganancias con Referidos y Retiradas (USDT)")
 
 # ==========================
-# Saldo inicial
+# Saldo inicial del usuario
 # ==========================
 if "saldo_inicial" not in st.session_state:
     st.session_state["saldo_inicial"] = 0.0
@@ -23,16 +23,6 @@ except:
 # Configuración de retiradas
 # ==========================
 st.subheader("Configuración de retiradas periódicas")
-
-saldo_limite_input = st.text_input(
-    "Saldo límite para operar (USDT, solo referencia)",
-    value="500"
-)
-try:
-    saldo_limite = float(saldo_limite_input.replace(',', '.'))
-except:
-    saldo_limite = 500.0
-
 saldo_retiro_input = st.text_input(
     "Saldo a partir del cual se realiza la retirada (USDT)",
     value="0"
@@ -69,35 +59,32 @@ porcentaje_beneficio_diario = st.number_input(
 )
 
 # ==========================
-# Referidos simplificados
+# Gestión de referidos
 # ==========================
-st.subheader("Número de referidos por nivel")
-if "num_referidos" not in st.session_state:
-    st.session_state["num_referidos"] = {"A":0, "B":0, "C":0}
+st.subheader("Gestión de referidos (saldo y nivel)")
 
-colA, colB, colC = st.columns(3)
-with colA:
-    st.session_state["num_referidos"]["A"] = st.number_input(
-        "Nivel A (19%)",
-        min_value=0,
-        value=st.session_state["num_referidos"]["A"],
-        step=1
-    )
-with colB:
-    st.session_state["num_referidos"]["B"] = st.number_input(
-        "Nivel B (7%)",
-        min_value=0,
-        value=st.session_state["num_referidos"]["B"],
-        step=1
-    )
-with colC:
-    st.session_state["num_referidos"]["C"] = st.number_input(
-        "Nivel C (3%)",
-        min_value=0,
-        value=st.session_state["num_referidos"]["C"],
-        step=1
-    )
+if "referidos" not in st.session_state:
+    st.session_state["referidos"] = []
 
+# Añadir nuevo referido
+with st.expander("Añadir referido"):
+    nivel_nuevo = st.selectbox("Nivel", ["A", "B", "C"])
+    saldo_nuevo_input = st.text_input("Saldo del referido (USDT)", value="0")
+    try:
+        saldo_nuevo = float(saldo_nuevo_input.replace(',', '.'))
+    except:
+        saldo_nuevo = 0.0
+    if st.button("➕ Añadir referido"):
+        st.session_state["referidos"].append({"nivel": nivel_nuevo, "saldo": saldo_nuevo})
+
+# Mostrar lista de referidos
+if st.session_state["referidos"]:
+    df_ref = pd.DataFrame(st.session_state["referidos"])
+    st.dataframe(df_ref, use_container_width=True)
+
+# ==========================
+# Comisiones por nivel
+# ==========================
 comisiones = {"A": 19, "B": 7, "C": 3}
 
 # ==========================
@@ -122,8 +109,8 @@ if st.button("▶️ Calcular ganancias"):
         for _ in range(num_cuantificaciones):
             ganancia_usuario = saldo_dia * (porcentaje_beneficio_diario / 100) / num_cuantificaciones
             ganancia_referidos = sum(
-                ganancia_usuario * (comisiones[nivel]/100) * st.session_state["num_referidos"][nivel]
-                for nivel in ["A","B","C"]
+                (r['saldo'] * (porcentaje_beneficio_diario / 100)) * (comisiones[r['nivel']]/100)
+                for r in st.session_state["referidos"]
             )
             saldo_dia += ganancia_usuario + ganancia_referidos
             ganancia_usuario_total += ganancia_usuario
@@ -164,8 +151,8 @@ if st.button("▶️ Calcular ganancias"):
             for _ in range(num_cuantificaciones):
                 g_usuario = saldo_dia * (porcentaje_beneficio_diario / 100) / num_cuantificaciones
                 g_referidos = sum(
-                    g_usuario * (comisiones[nivel]/100) * st.session_state["num_referidos"][nivel]
-                    for nivel in ["A","B","C"]
+                    (r['saldo'] * (porcentaje_beneficio_diario / 100)) * (comisiones[r['nivel']]/100)
+                    for r in st.session_state["referidos"]
                 )
                 saldo_dia += g_usuario + g_referidos
                 ganancia_usuario_dia += g_usuario
