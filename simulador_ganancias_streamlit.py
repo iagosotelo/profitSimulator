@@ -5,6 +5,25 @@ st.set_page_config(page_title="Simulador de Ganancias USDT", layout="wide")
 st.title("💰 Simulador de Ganancias con Referidos y Retiradas (USDT)")
 
 # ==========================
+# Parámetros generales
+# ==========================
+st.subheader("Parámetros de operación")
+
+num_cuantificaciones = st.number_input(
+    "Número de cuantificaciones diarias",
+    min_value=1,
+    value=4,
+    step=1
+)
+
+porcentaje_beneficio_diario = st.number_input(
+    "Beneficio propio diario (%)",
+    min_value=0.0,
+    value=3.0,
+    step=0.1
+)
+
+# ==========================
 # Saldo inicial del usuario
 # ==========================
 if "saldo_inicial" not in st.session_state:
@@ -40,23 +59,6 @@ try:
     importe_retiro = float(importe_retiro_input.replace(',', '.'))
 except:
     importe_retiro = 0.0
-
-# ==========================
-# Cuantificaciones y beneficio diario
-# ==========================
-num_cuantificaciones = st.number_input(
-    "Número de cuantificaciones diarias",
-    min_value=1,
-    value=4,
-    step=1
-)
-
-porcentaje_beneficio_diario = st.number_input(
-    "Beneficio propio diario (%)",
-    min_value=0.0,
-    value=3.0,
-    step=0.1
-)
 
 # ==========================
 # Gestión de referidos
