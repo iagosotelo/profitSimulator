@@ -107,16 +107,21 @@ if st.button("▶️ Calcular ganancias"):
         ganancia_usuario_total = 0
         ganancia_referidos_total = 0
         
-        # Operar por cuantificaciones
+        # Operar por cuantificaciones propias
         for _ in range(num_cuantificaciones):
             ganancia_usuario = saldo_dia * (porcentaje_beneficio_diario / 100) / num_cuantificaciones
-            ganancia_referidos = sum(
-                (r['saldo'] * (porcentaje_beneficio_diario / 100)) * (comisiones[r['nivel']]/100)
-                for r in st.session_state["referidos"]
-            )
-            saldo_dia += ganancia_usuario + ganancia_referidos
+            saldo_dia += ganancia_usuario
             ganancia_usuario_total += ganancia_usuario
-            ganancia_referidos_total += ganancia_referidos
+            
+            # Ganancia por referidos calculada correctamente
+            for r in st.session_state["referidos"]:
+                saldo_r = r['saldo']
+                ganancia_referido_dia = 0
+                for _ in range(num_cuantificaciones):
+                    g_r = saldo_r * (porcentaje_beneficio_diario / 100) / num_cuantificaciones
+                    saldo_r += g_r
+                    ganancia_referido_dia += g_r
+                ganancia_referidos_total += ganancia_referido_dia * (comisiones[r['nivel']] / 100)
         
         # Retirada al final del día si se alcanza saldo_retiro
         if saldo_dia >= saldo_retiro:
@@ -145,20 +150,24 @@ if st.button("▶️ Calcular ganancias"):
         saldo_mes = saldo
         ganancia_usuario_total = 0
         ganancia_referidos_total = 0
-        # Aproximar mes a 30 días, operando cada día con cuantificaciones
+        # Aproximar mes a 30 días
         for _ in range(30):
             saldo_dia = saldo_mes
             ganancia_usuario_dia = 0
             ganancia_referidos_dia = 0
             for _ in range(num_cuantificaciones):
                 g_usuario = saldo_dia * (porcentaje_beneficio_diario / 100) / num_cuantificaciones
-                g_referidos = sum(
-                    (r['saldo'] * (porcentaje_beneficio_diario / 100)) * (comisiones[r['nivel']]/100)
-                    for r in st.session_state["referidos"]
-                )
-                saldo_dia += g_usuario + g_referidos
+                saldo_dia += g_usuario
                 ganancia_usuario_dia += g_usuario
-                ganancia_referidos_dia += g_referidos
+                
+                for r in st.session_state["referidos"]:
+                    saldo_r = r['saldo']
+                    ganancia_referido_dia = 0
+                    for _ in range(num_cuantificaciones):
+                        g_r = saldo_r * (porcentaje_beneficio_diario / 100) / num_cuantificaciones
+                        saldo_r += g_r
+                        ganancia_referido_dia += g_r
+                    ganancia_referidos_dia += ganancia_referido_dia * (comisiones[r['nivel']] / 100)
             # Retirada al final del día
             if saldo_dia >= saldo_retiro:
                 saldo_dia -= importe_retiro
