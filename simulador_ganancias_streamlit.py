@@ -19,7 +19,7 @@ num_cuantificaciones = st.number_input(
 porcentaje_beneficio_diario = st.number_input(
     "Beneficio propio diario (%)",
     min_value=0.0,
-    value=3.0,
+    value=1.7,
     step=0.1
 )
 
