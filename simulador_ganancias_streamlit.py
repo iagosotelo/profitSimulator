@@ -1,218 +1,219 @@
-import streamlit as st
-import pandas as pd
+import React, { useState } from "react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
 
-st.set_page_config(page_title="Simulador de Ganancias USDT", layout="wide")
-st.title("💰 Simulador de Ganancias con Referidos y Retiradas (USDT)")
+export default function App() {
+  const [cuantificaciones, setCuantificaciones] = useState(1);
+  const [beneficioDiario, setBeneficioDiario] = useState(1); // %
+  const [saldoInicial, setSaldoInicial] = useState(500);
+  const [saldoRetiro, setSaldoRetiro] = useState(500);
+  const [importeRetiro, setImporteRetiro] = useState(100);
 
-# ==========================
-# Parámetros generales
-# ==========================
-st.subheader("Parámetros de operación")
+  const [referidos, setReferidos] = useState([]);
+  const [nuevoSaldoRef, setNuevoSaldoRef] = useState(0);
+  const [nuevoNivelRef, setNuevoNivelRef] = useState("A");
 
-num_cuantificaciones = st.number_input(
-    "Número de cuantificaciones diarias",
-    min_value=1,
-    value=4,
-    step=1
-)
+  // Porcentajes de ganancia de referidos según nivel
+  const porcentajesRef = { A: 0.05, B: 0.03, C: 0.01 };
 
-porcentaje_beneficio_diario = st.number_input(
-    "Beneficio propio diario (%)",
-    min_value=0.0,
-    value=1.7,
-    step=0.1
-)
+  const addReferido = () => {
+    if (nuevoSaldoRef > 0) {
+      setReferidos([...referidos, { saldo: Number(nuevoSaldoRef), nivel: nuevoNivelRef }]);
+      setNuevoSaldoRef(0);
+    }
+  };
 
-# ==========================
-# Saldo inicial del usuario
-# ==========================
-if "saldo_inicial" not in st.session_state:
-    st.session_state["saldo_inicial"] = 0.0
+  const simular = () => {
+    let saldo = saldoInicial;
+    let resultadosDiarios = [];
+    let resultadosMensuales = [];
+    let gananciaTotal = 0;
 
-saldo_input = st.text_input(
-    "Saldo inicial del usuario (USDT)",
-    value=str(st.session_state["saldo_inicial"])
-)
-try:
-    st.session_state["saldo_inicial"] = float(saldo_input.replace(',', '.'))
-except:
-    st.warning("Introduce un número válido para el saldo inicial")
+    // Copia de saldos de referidos
+    let referidosSim = referidos.map(r => ({ ...r }));
 
-# ==========================
-# Configuración de retiradas
-# ==========================
-st.subheader("Configuración de retiradas periódicas")
-saldo_retiro_input = st.text_input(
-    "Saldo a partir del cual se realiza la retirada (USDT)",
-    value="500"
-)
-try:
-    saldo_retiro = float(saldo_retiro_input.replace(',', '.'))
-except:
-    saldo_retiro = 500.0
+    for (let dia = 1; dia <= 360; dia++) {
+      // Ganancia propia con cuantificaciones
+      let gananciaPropia = 0;
+      let saldoTemp = saldo;
+      for (let c = 0; c < cuantificaciones; c++) {
+        let g = saldoTemp * (beneficioDiario / 100 / cuantificaciones);
+        saldoTemp += g;
+        gananciaPropia += g;
+      }
+      saldo = saldoTemp;
 
-importe_retiro_input = st.text_input(
-    "Importe a retirar cuando se alcanza el saldo de retirada (USDT)",
-    value="100"
-)
-try:
-    importe_retiro = float(importe_retiro_input.replace(',', '.'))
-except:
-    importe_retiro = 100.0
+      // Ganancia referidos
+      let gananciaReferidos = 0;
+      referidosSim = referidosSim.map(r => {
+        let gRef = 0;
+        let saldoTempRef = r.saldo;
+        for (let c = 0; c < cuantificaciones; c++) {
+          let g = saldoTempRef * (beneficioDiario / 100 / cuantificaciones);
+          saldoTempRef += g;
+          gRef += g;
+        }
+        let gComision = gRef * (porcentajesRef[r.nivel] || 0);
+        gananciaReferidos += gComision;
+        return { ...r, saldo: saldoTempRef };
+      });
 
-# ==========================
-# Gestión de referidos
-# ==========================
-st.subheader("Gestión de referidos (saldo y nivel)")
+      let gananciaDia = gananciaPropia + gananciaReferidos;
+      gananciaTotal += gananciaDia;
 
-if "referidos" not in st.session_state:
-    st.session_state["referidos"] = []
+      // Retirada si aplica
+      if (saldo >= saldoRetiro) {
+        saldo -= importeRetiro;
+      }
 
-# Añadir nuevo referido
-with st.expander("Añadir referido"):
-    nivel_nuevo = st.selectbox("Nivel", ["A", "B", "C"])
-    saldo_nuevo_input = st.text_input("Saldo del referido (USDT)", value="0")
-    try:
-        saldo_nuevo = float(saldo_nuevo_input.replace(',', '.'))
-    except:
-        saldo_nuevo = 0.0
-    if st.button("➕ Añadir referido"):
-        st.session_state["referidos"].append({"nivel": nivel_nuevo, "saldo": saldo_nuevo})
+      // Guardar en resultados diarios (solo 90 días)
+      if (dia <= 90) {
+        resultadosDiarios.push({
+          dia,
+          saldo: saldo.toFixed(2),
+          gananciaPropia: gananciaPropia.toFixed(2),
+          gananciaReferidos: gananciaReferidos.toFixed(2),
+          gananciaTotal: gananciaTotal.toFixed(2),
+        });
+      }
 
-# Mostrar lista de referidos
-if st.session_state["referidos"]:
-    df_ref = pd.DataFrame(st.session_state["referidos"])
-    st.dataframe(df_ref, use_container_width=True)
+      // Guardar resumen mensual cada 30 días
+      if (dia % 30 === 0) {
+        resultadosMensuales.push({
+          mes: dia / 30,
+          saldo: saldo.toFixed(2),
+          gananciaTotal: gananciaTotal.toFixed(2),
+        });
+      }
+    }
 
-# ==========================
-# Comisiones por nivel
-# ==========================
-comisiones = {"A": 19, "B": 7, "C": 3}
+    return { resultadosDiarios, resultadosMensuales };
+  };
 
-# ==========================
-# Simulación de ganancias diaria y mensual
-# ==========================
-st.subheader("Simulación de Beneficios")
+  const { resultadosDiarios, resultadosMensuales } = simular();
 
-if st.button("▶️ Calcular ganancias"):
-    saldo = st.session_state["saldo_inicial"]
-    
-    # --------------------------
-    # Tabla diaria para 90 días
-    # --------------------------
-    dias = 90
-    registros_diarios = []
-    referidos_sim = [r.copy() for r in st.session_state["referidos"]]
-    
-    for dia in range(1, dias+1):
-        saldo_dia = saldo
-        ganancia_usuario_total = 0
-        ganancia_referidos_total = 0
-        
-        # Operar por cuantificaciones propias
-        for _ in range(num_cuantificaciones):
-            ganancia_usuario = saldo_dia * (porcentaje_beneficio_diario / 100) / num_cuantificaciones
-            saldo_dia += ganancia_usuario
-            ganancia_usuario_total += ganancia_usuario
-            
-            # Ganancia por referidos
-            for idx, r in enumerate(referidos_sim):
-                saldo_r = r['saldo']
-                ganancia_referido_cuanti = saldo_r * (porcentaje_beneficio_diario / 100) / num_cuantificaciones
-                saldo_r += ganancia_referido_cuanti
-                
-                # Retirada periódica para el referido
-                if saldo_r >= saldo_retiro:
-                    saldo_r -= importe_retiro
-                
-                # Actualizar saldo del referido
-                referidos_sim[idx]['saldo'] = saldo_r
-                
-                # Ganancia para el usuario
-                ganancia_referidos_total += ganancia_referido_cuanti * (comisiones[r['nivel']] / 100)
-        
-        # Retirada para el usuario
-        if saldo_dia >= saldo_retiro:
-            saldo_dia -= importe_retiro
-        
-        registros_diarios.append({
-            "Día": dia,
-            "Ganancia usuario (USDT)": round(ganancia_usuario_total,2),
-            "Ganancia por referidos (USDT)": round(ganancia_referidos_total,2),
-            "Ganancia total (USDT)": round(ganancia_usuario_total + ganancia_referidos_total,2)
-        })
-        
-        saldo = saldo_dia
-    
-    df_diario = pd.DataFrame(registros_diarios)
-    st.subheader("Tabla diaria (90 días)")
-    st.dataframe(df_diario, use_container_width=True)
-    
-    # --------------------------
-    # Tabla mensual para 12 meses
-    # --------------------------
-    saldo = st.session_state["saldo_inicial"]
-    referidos_sim = [r.copy() for r in st.session_state["referidos"]]
-    meses = 12
-    registros_mensuales = []
-    
-    for mes in range(1, meses+1):
-        saldo_mes = saldo
-        ganancia_usuario_total = 0
-        ganancia_referidos_total = 0
-        # Aproximar mes a 30 días
-        for _ in range(30):
-            saldo_dia = saldo_mes
-            ganancia_usuario_dia = 0
-            ganancia_referidos_dia = 0
-            for _ in range(num_cuantificaciones):
-                g_usuario = saldo_dia * (porcentaje_beneficio_diario / 100) / num_cuantificaciones
-                saldo_dia += g_usuario
-                ganancia_usuario_dia += g_usuario
-                
-                for idx, r in enumerate(referidos_sim):
-                    saldo_r = r['saldo']
-                    g_r = saldo_r * (porcentaje_beneficio_diario / 100) / num_cuantificaciones
-                    saldo_r += g_r
-                    # Retirada periódica
-                    if saldo_r >= saldo_retiro:
-                        saldo_r -= importe_retiro
-                    referidos_sim[idx]['saldo'] = saldo_r
-                    ganancia_referidos_dia += g_r * (comisiones[r['nivel']] / 100)
-            
-            saldo_mes = saldo_dia
-            ganancia_usuario_total += ganancia_usuario_dia
-            ganancia_referidos_total += ganancia_referidos_dia
-        
-        registros_mensuales.append({
-            "Mes": mes,
-            "Ganancia usuario (USDT)": round(ganancia_usuario_total,2),
-            "Ganancia por referidos (USDT)": round(ganancia_referidos_total,2),
-            "Ganancia total (USDT)": round(ganancia_usuario_total + ganancia_referidos_total,2)
-        })
-        
-        saldo = saldo_mes
-    
-    df_mensual = pd.DataFrame(registros_mensuales)
-    st.subheader("Tabla mensual (12 meses)")
-    st.dataframe(df_mensual, use_container_width=True)
-    
-    # --------------------------
-    # Descargar CSV
-    # --------------------------
-    csv_diario = df_diario.to_csv(index=False).encode("utf-8")
-    csv_mensual = df_mensual.to_csv(index=False).encode("utf-8")
-    
-    st.download_button(
-        label="📥 Descargar resultados diarios CSV",
-        data=csv_diario,
-        file_name="simulacion_diaria.csv",
-        mime="text/csv"
-    )
-    
-    st.download_button(
-        label="📥 Descargar resultados mensuales CSV",
-        data=csv_mensual,
-        file_name="simulacion_mensual.csv",
-        mime="text/csv"
-    )
+  return (
+    <div className="p-6 grid gap-6">
+      <h1 className="text-2xl font-bold">Simulador de Inversión (USDT)</h1>
+
+      {/* Configuración principal */}
+      <Card>
+        <CardContent className="grid gap-4 p-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label>Nº de cuantificaciones diarias</label>
+              <Input type="number" value={cuantificaciones} onChange={e => setCuantificaciones(+e.target.value)} />
+            </div>
+            <div>
+              <label>Beneficio propio diario (%)</label>
+              <Input type="number" value={beneficioDiario} onChange={e => setBeneficioDiario(+e.target.value)} />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Configuración de retiradas */}
+      <Card>
+        <CardContent className="grid gap-4 p-4">
+          <h2 className="text-lg font-semibold">Configuración de retiradas</h2>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label>Saldo a partir de retirada (USDT)</label>
+              <Input type="number" value={saldoRetiro} onChange={e => setSaldoRetiro(+e.target.value)} />
+            </div>
+            <div>
+              <label>Importe a retirar (USDT)</label>
+              <Input type="number" value={importeRetiro} onChange={e => setImporteRetiro(+e.target.value)} />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Referidos */}
+      <Card>
+        <CardContent className="grid gap-4 p-4">
+          <h2 className="text-lg font-semibold">Gestión de referidos</h2>
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <label>Saldo referido (USDT)</label>
+              <Input type="number" value={nuevoSaldoRef} onChange={e => setNuevoSaldoRef(e.target.value)} />
+            </div>
+            <div>
+              <label>Nivel</label>
+              <Select value={nuevoNivelRef} onChange={e => setNuevoNivelRef(e.target.value)}>
+                <option value="A">Nivel A</option>
+                <option value="B">Nivel B</option>
+                <option value="C">Nivel C</option>
+              </Select>
+            </div>
+            <div className="flex items-end">
+              <Button onClick={addReferido}>Añadir referido</Button>
+            </div>
+          </div>
+
+          <ul className="list-disc ml-6">
+            {referidos.map((r, i) => (
+              <li key={i}>Nivel {r.nivel} - Saldo: {r.saldo} USDT</li>
+            ))}
+          </ul>
+        </CardContent>
+      </Card>
+
+      {/* Tabla diaria */}
+      <Card>
+        <CardContent className="p-4">
+          <h2 className="text-lg font-semibold">Ganancias diarias (90 días)</h2>
+          <table className="table-auto w-full text-sm">
+            <thead>
+              <tr>
+                <th>Día</th>
+                <th>Saldo</th>
+                <th>Ganancia propia</th>
+                <th>Ganancia referidos</th>
+                <th>Ganancia total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {resultadosDiarios.map((r) => (
+                <tr key={r.dia}>
+                  <td>{r.dia}</td>
+                  <td>{r.saldo}</td>
+                  <td>{r.gananciaPropia}</td>
+                  <td>{r.gananciaReferidos}</td>
+                  <td>{r.gananciaTotal}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </CardContent>
+      </Card>
+
+      {/* Tabla mensual */}
+      <Card>
+        <CardContent className="p-4">
+          <h2 className="text-lg font-semibold">Ganancias mensuales (12 meses)</h2>
+          <table className="table-auto w-full text-sm">
+            <thead>
+              <tr>
+                <th>Mes</th>
+                <th>Saldo</th>
+                <th>Ganancia total acumulada</th>
+              </tr>
+            </thead>
+            <tbody>
+              {resultadosMensuales.map((r) => (
+                <tr key={r.mes}>
+                  <td>{r.mes}</td>
+                  <td>{r.saldo}</td>
+                  <td>{r.gananciaTotal}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
